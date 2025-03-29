@@ -17,21 +17,52 @@
       ".vercel"
     ]
   },
-  "formatter": { "enabled": true },
+  "formatter": { "enabled": true, "indentStyle": "tab", "lineWidth": 100 },
   "organizeImports": { "enabled": true },
   "linter": {
     "enabled": true,
     "rules": {
+      "recommended": true,
+      "correctness": {
+        "useExhaustiveDependencies": "error",
+        "noUnusedVariables": "warn"
+      },
+      "a11y": {
+        "noSvgWithoutTitle": "off",
+        "useButtonType": "off",
+        "useAltText": "off",
+        "useKeyWithClickEvents": "off",
+        "useSemanticElements": "off",
+        "noLabelWithoutControl": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noConsoleLog": "warn",
+        "noArrayIndexKey": "warn"
+      },
+      "performance": {
+        "recommended": true
+      },
+      "style": {
+        "recommended": true,
+        "useConst": "error",
+        "noVar": "error",
+        "useTemplate": "error"
+      },
+      "complexity": {
+        "noBannedTypes": "error"
+      },
       "nursery": {
+        "recommended": true,
         "useSortedClasses": {
           "level": "warn",
           "fix": "safe",
           "options": {
-            "functions": ["clsx", "cva", "cn"]
+            "attributes": ["classList"],
+            "functions": ["clsx", "cva", "tw", "cn"]
           }
         }
-      },
-      "recommended": true
+      }
     }
   }
 }
