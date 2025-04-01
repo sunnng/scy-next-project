@@ -3,19 +3,14 @@ import { handle } from "hono/vercel";
 
 export const runtime = "edge";
 
-// 存储消息的数据结构
-interface Message {
-  id: string;
-  content: string;
-  timestamp: number;
-}
-
 // 客户端信息结构
 interface ClientInfo {
   id: string;
+  deviceId: string;
   lastSeen: number;
   isOnline: boolean;
-  deviceInfo: string;
+  foregroundApp: string;
+  isForeground: boolean;
   pendingCommands: Command[];
 }
 
@@ -28,9 +23,6 @@ interface Command {
   executed: boolean;
 }
 
-// 存储所有消息
-const messages: Message[] = [];
-
 // 存储所有客户端信息
 const clients: Record<string, ClientInfo> = {};
 
@@ -39,40 +31,40 @@ const CLIENT_TIMEOUT = 30 * 1000; // 30秒
 
 const app = new Hono().basePath("/api/hono");
 
-app.get("/hello", (c) => {
-  return c.json({
-    message: "Hello Next.js!",
-  });
-});
-
 // 客户端轮询端点
 app.post("/client/poll", async (c) => {
   try {
     const body = await c.req.json();
-    const clientId = body.clientId || crypto.randomUUID();
-    const deviceInfo = body.deviceInfo || "未知设备";
+    const clientId = body.clientId ? body.clientId : crypto.randomUUID();
+    const deviceId = body.deviceId || "未知设备";
+    const foregroundApp = body.foregroundApp || "未知应用";
+    const isForeground = body.isForeground === true;
 
     // 更新或注册客户端信息
     if (!clients[clientId]) {
       clients[clientId] = {
         id: clientId,
+        deviceId,
         lastSeen: Date.now(),
         isOnline: true,
-        deviceInfo,
+        foregroundApp,
+        isForeground,
         pendingCommands: [],
       };
     } else {
-      clients[clientId].lastSeen = Date.now();
-      clients[clientId].isOnline = true;
-      if (deviceInfo !== "未知设备") {
-        clients[clientId].deviceInfo = deviceInfo;
+      const client = clients[clientId];
+      if (client) {
+        client.lastSeen = Date.now();
+        client.isOnline = true;
+        client.deviceId = deviceId;
+        client.foregroundApp = foregroundApp;
+        client.isForeground = isForeground;
       }
     }
 
     // 获取客户端的待执行命令
-    const pendingCommands = clients[clientId].pendingCommands.filter(
-      (cmd) => !cmd.executed
-    );
+    const pendingCommands =
+      clients[clientId]?.pendingCommands.filter((cmd) => !cmd.executed) || [];
 
     return c.json({
       clientId,
@@ -95,12 +87,16 @@ app.post("/client/ack", async (c) => {
       return c.json({ error: "缺少客户端ID或命令ID" }, 400);
     }
 
-    if (clients[clientId]) {
-      const commandIndex = clients[clientId].pendingCommands.findIndex(
+    const client = clients[clientId];
+    if (client && Array.isArray(client.pendingCommands)) {
+      const commandIndex = client.pendingCommands.findIndex(
         (cmd) => cmd.id === commandId
       );
       if (commandIndex !== -1) {
-        clients[clientId].pendingCommands[commandIndex].executed = true;
+        const command = client.pendingCommands[commandIndex];
+        if (command) {
+          command.executed = true;
+        }
       }
     }
 
@@ -118,9 +114,11 @@ app.get("/admin/clients", (c) => {
   // 格式化客户端信息以便输出
   const clientsInfo = Object.values(clients).map((client) => ({
     id: client.id,
+    deviceId: client.deviceId,
     isOnline: client.isOnline,
     lastSeen: client.lastSeen,
-    deviceInfo: client.deviceInfo,
+    foregroundApp: client.foregroundApp,
+    isForeground: client.isForeground,
     pendingCommandsCount: client.pendingCommands.filter((cmd) => !cmd.executed)
       .length,
   }));
@@ -138,7 +136,8 @@ app.post("/admin/send-command", async (c) => {
       return c.json({ error: "缺少客户端ID或命令类型" }, 400);
     }
 
-    if (!clients[clientId]) {
+    const client = clients[clientId];
+    if (!client) {
       return c.json({ error: "客户端不存在" }, 404);
     }
 
@@ -150,7 +149,7 @@ app.post("/admin/send-command", async (c) => {
       executed: false,
     };
 
-    clients[clientId].pendingCommands.push(command);
+    client.pendingCommands.push(command);
 
     return c.json({ success: true, command });
   } catch (error) {
@@ -164,8 +163,9 @@ function updateClientsStatus() {
 
   for (const clientId in clients) {
     if (Object.prototype.hasOwnProperty.call(clients, clientId)) {
-      if (now - clients[clientId].lastSeen > CLIENT_TIMEOUT) {
-        clients[clientId].isOnline = false;
+      const client = clients[clientId];
+      if (client && now - client.lastSeen > CLIENT_TIMEOUT) {
+        client.isOnline = false;
       }
     }
   }
@@ -178,77 +178,13 @@ setInterval(() => {
 
   for (const clientId in clients) {
     if (Object.prototype.hasOwnProperty.call(clients, clientId)) {
-      if (now - clients[clientId].lastSeen > oneDay) {
+      const client = clients[clientId];
+      if (client && now - client.lastSeen > oneDay) {
         delete clients[clientId];
       }
     }
   }
 }, 60 * 60 * 1000);
-
-// 以下保留原有的消息相关端点
-// 发送消息的端点
-app.post("/messages", async (c) => {
-  const body = await c.req.json();
-
-  if (!body.content || typeof body.content !== "string") {
-    return c.json({ error: "Content is required and must be a string" }, 400);
-  }
-
-  const message: Message = {
-    id: crypto.randomUUID(),
-    content: body.content,
-    timestamp: Date.now(),
-  };
-
-  messages.push(message);
-
-  // 只保留最新的100条消息
-  if (messages.length > 100) {
-    messages.shift();
-  }
-
-  return c.json({ success: true, message });
-});
-
-// 客户端轮询获取新消息的端点
-app.get("/messages", (c) => {
-  const clientId = c.req.query("clientId") || crypto.randomUUID();
-  const lastTimestamp = Number.parseInt(
-    c.req.query("lastTimestamp") || "0",
-    10
-  );
-
-  // 确保客户端存在
-  if (!clients[clientId]) {
-    clients[clientId] = {
-      id: clientId,
-      lastSeen: Date.now(),
-      isOnline: true,
-      deviceInfo: "消息系统客户端",
-      pendingCommands: [],
-    };
-  } else {
-    clients[clientId].lastSeen = Date.now();
-  }
-
-  // 只返回上次轮询之后的新消息
-  const newMessages = messages.filter((msg) => msg.timestamp > lastTimestamp);
-
-  // 计算最新的时间戳
-  let newLastTimestamp = lastTimestamp;
-  if (newMessages.length > 0) {
-    newLastTimestamp = newMessages.reduce(
-      (max, msg) => (msg.timestamp > max ? msg.timestamp : max),
-      lastTimestamp
-    );
-  }
-
-  return c.json({
-    clientId,
-    messages: newMessages,
-    lastTimestamp: newLastTimestamp,
-  });
-});
 
 export const GET = handle(app);
 export const POST = handle(app);

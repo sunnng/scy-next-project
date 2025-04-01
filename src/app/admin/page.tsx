@@ -1,14 +1,17 @@
 "use client";
 
+import { Separator } from "@/components/ui/separator";
 import { useCallback, useEffect, useState } from "react";
 import ClientList from "../../components/admin/ClientList";
 import CommandForm from "../../components/admin/CommandForm";
 
 interface ClientInfo {
 	id: string;
+	deviceId: string;
 	isOnline: boolean;
 	lastSeen: number;
-	deviceInfo: string;
+	foregroundApp: string;
+	isForeground: boolean;
 	pendingCommandsCount: number;
 }
 
@@ -85,32 +88,59 @@ export default function AdminPage() {
 		return () => clearInterval(intervalId);
 	}, [fetchClients]);
 
+	// 获取已选中的客户端信息
+	const selectedClient = clients.find((client) => client.id === selectedClientId);
+
 	return (
-		<div className="container mx-auto p-4">
-			<h1 className="mb-6 text-center font-bold text-2xl">客户端管理系统</h1>
+		<div className="container mx-auto max-w-6xl p-4">
+			<div className="flex flex-col">
+				<h1 className="mb-2 font-bold text-3xl tracking-tight">设备管理</h1>
+				<p className="mb-6 text-muted-foreground">监控设备状态并发送指令</p>
 
-			{error && (
-				<div className="mb-4 rounded-md bg-red-100 p-3 text-red-700">
-					<p>{error}</p>
-				</div>
-			)}
+				{error && (
+					<div className="mb-4 rounded-md bg-destructive/15 p-3 text-destructive">
+						<p>{error}</p>
+					</div>
+				)}
 
-			<div className="grid gap-6 md:grid-cols-2">
-				{/* 左侧：客户端列表 */}
-				<div className="rounded-lg border bg-white p-4 shadow-sm">
-					<h2 className="mb-4 font-semibold text-xl">客户端列表</h2>
-					<ClientList
-						clients={clients}
-						loading={loading}
-						selectedClientId={selectedClientId}
-						onSelectClient={selectClient}
-					/>
-				</div>
+				<div className="grid gap-6 md:grid-cols-2">
+					{/* 左侧：客户端列表 */}
+					<div>
+						<h2 className="mb-4 font-semibold text-xl">客户端列表</h2>
+						<ClientList
+							clients={clients}
+							loading={loading}
+							selectedClientId={selectedClientId}
+							onSelectClient={selectClient}
+						/>
+					</div>
 
-				{/* 右侧：命令发送 */}
-				<div className="rounded-lg border bg-white p-4 shadow-sm">
-					<h2 className="mb-4 font-semibold text-xl">发送命令</h2>
-					<CommandForm selectedClientId={selectedClientId} onSendCommand={sendCommand} disabled={!selectedClientId} />
+					{/* 右侧：命令发送 */}
+					<div>
+						{selectedClient && (
+							<div className="mb-4">
+								<h2 className="font-semibold text-xl">已选择的设备</h2>
+								<p className="mb-2 text-muted-foreground">设备ID: {selectedClient.deviceId}</p>
+								<div className="mb-4 flex gap-2">
+									<span
+										className={`rounded-full px-2 py-1 text-xs ${selectedClient.isOnline ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+									>
+										{selectedClient.isOnline ? "在线" : "离线"}
+									</span>
+									<span
+										className={`rounded-full px-2 py-1 text-xs ${selectedClient.isForeground ? "bg-purple-100 text-purple-800" : "bg-yellow-100 text-yellow-800"}`}
+									>
+										{selectedClient.isForeground ? "前台" : "后台"}
+									</span>
+									<span className="rounded-full bg-blue-100 px-2 py-1 text-blue-800 text-xs">
+										{selectedClient.foregroundApp}
+									</span>
+								</div>
+								<Separator className="my-4" />
+							</div>
+						)}
+						<CommandForm selectedClientId={selectedClientId} onSendCommand={sendCommand} disabled={!selectedClientId} />
+					</div>
 				</div>
 			</div>
 		</div>
