@@ -36,13 +36,14 @@ export default function ClientList({ clients, loading, selectedClientId, onSelec
 
 		if (diffSec < 60) {
 			return `${diffSec}秒前`;
-		} else if (diffSec < 3600) {
-			return `${Math.floor(diffSec / 60)}分钟前`;
-		} else if (diffSec < 86400) {
-			return `${Math.floor(diffSec / 3600)}小时前`;
-		} else {
-			return lastSeen.toLocaleString();
 		}
+		if (diffSec < 3600) {
+			return `${Math.floor(diffSec / 60)}分钟前`;
+		}
+		if (diffSec < 86400) {
+			return `${Math.floor(diffSec / 3600)}小时前`;
+		}
+		return lastSeen.toLocaleString();
 	};
 
 	return (
@@ -78,7 +79,7 @@ export default function ClientList({ clients, loading, selectedClientId, onSelec
 			{/* 客户端列表 */}
 			{loading ? (
 				<div className="flex justify-center py-8">
-					<div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+					<div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
 					<span className="ml-2">加载中...</span>
 				</div>
 			) : filteredClients.length > 0 ? (
@@ -93,7 +94,7 @@ export default function ClientList({ clients, loading, selectedClientId, onSelec
 						>
 							<div className="flex items-center justify-between">
 								<div className="flex items-center">
-									<div className={`h-3 w-3 rounded-full ${client.isOnline ? "bg-green-500" : "bg-red-500"}`}></div>
+									<div className={`h-3 w-3 rounded-full ${client.isOnline ? "bg-green-500" : "bg-red-500"}`} />
 									<span className="ml-2 font-medium">{client.deviceInfo}</span>
 								</div>
 								{client.pendingCommandsCount > 0 && (
