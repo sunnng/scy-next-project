@@ -1,11 +1,11 @@
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { buttonVariants } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
+import { TRPCReactProvider } from "@/trpc/react";
 import { HomeIcon, MonitorIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-
-import { TRPCReactProvider } from "@/trpc/react";
 
 export const metadata: Metadata = {
 	title: "设备监控与指令管理系统",
@@ -61,6 +61,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 						</div>
 					</footer>
 				</ThemeProvider>
+				<Toaster />
 			</body>
 		</html>
 	);
