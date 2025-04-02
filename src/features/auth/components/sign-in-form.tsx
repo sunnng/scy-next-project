@@ -13,19 +13,44 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
-const formSchema = signInSchema;
+import { authClient } from "@/lib/auth-client";
 
 export function SignInForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
+	const form = useForm<z.infer<typeof signInSchema>>({
+		resolver: zodResolver(signInSchema),
 		defaultValues: {
 			email: "",
 			password: "",
 		},
 	});
 
-	function onSubmit(values: z.infer<typeof formSchema>) {
+	async function onSubmit(values: z.infer<typeof signInSchema>) {
 		console.log(values);
+		const { email, password } = values;
+		const { data, error } = await authClient.signIn.email(
+			{
+				/**
+				 * The user email
+				 */
+				email,
+				/**
+				 * The user password
+				 */
+				password,
+				/**
+				 * a url to redirect to after the user verifies their email (optional)
+				 */
+				callbackURL: "/",
+				/**
+				 * remember the user session after the browser is closed.
+				 * @default true
+				 */
+				rememberMe: false,
+			},
+			{
+				//callbacks
+			},
+		);
 	}
 
 	return (
