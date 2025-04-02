@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import { licenseBatches, licenseKeys } from "@/server/db/schema";
+import { licenseBatches, licenseKeys } from "@/server/db/schema/schema";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
